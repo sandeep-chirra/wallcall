@@ -1,4 +1,9 @@
 {
   "name": "WallCalNative",
-  "displayName": "WallCalNative"
+  "displayName": "WallCalNative",
+  "extra": {
+    "eas": {
+      "projectId": "9a990ab4-800d-42c0-a9dd-758b645d739d"
+    }
+  }
 }
