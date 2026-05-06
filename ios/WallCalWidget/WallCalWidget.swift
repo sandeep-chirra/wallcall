@@ -200,6 +200,24 @@ struct WallCalInlineView: View {
   }
 }
 
+struct WallCalWidgetBackground: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOSApplicationExtension 17.0, *) {
+      content.containerBackground(.fill.tertiary, for: .widget)
+    } else {
+      content
+        .padding(8)
+        .background(Color(UIColor.secondarySystemBackground))
+    }
+  }
+}
+
+extension View {
+  func wallCalWidgetBackground() -> some View {
+    modifier(WallCalWidgetBackground())
+  }
+}
+
 private func categoryIcon(for category: String) -> String {
   switch category {
   case "birthday": return "🎂"
@@ -218,7 +236,7 @@ struct WallCalWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: WallCalProvider()) { entry in
       WallCalRectangularView(entry: entry)
-        .containerBackground(.fill.tertiary, for: .widget)
+        .wallCalWidgetBackground()
     }
     .configurationDisplayName("WallCal Next Reminder")
     .description("See your next important reminder at a glance.")
@@ -232,7 +250,7 @@ struct WallCalCircularWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: WallCalProvider()) { entry in
       WallCalCircularView(entry: entry)
-        .containerBackground(.fill.tertiary, for: .widget)
+        .wallCalWidgetBackground()
     }
     .configurationDisplayName("WallCal Countdown")
     .description("Compact countdown for your next reminder.")
