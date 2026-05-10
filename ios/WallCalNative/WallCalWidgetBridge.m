@@ -9,4 +9,9 @@ RCT_EXTERN_METHOD(saveEvents:(NSString *)payload
 RCT_EXTERN_METHOD(reloadTimelines:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(saveWallpaperImage:(NSString *)tempUri
+                  eventId:(NSString *)eventId
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

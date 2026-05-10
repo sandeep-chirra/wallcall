@@ -36,4 +36,39 @@ class WallCalWidgetBridge: NSObject {
     WidgetCenter.shared.reloadAllTimelines()
     resolve(nil)
   }
+
+  @objc(saveWallpaperImage:eventId:resolver:rejecter:)
+  func saveWallpaperImage(
+    _ tempUri: String,
+    eventId: String,
+    resolver resolve: RCTPromiseResolveBlock,
+    rejecter reject: RCTPromiseRejectBlock
+  ) {
+    let sourceURL: URL
+
+    if tempUri.hasPrefix("file://"), let parsedURL = URL(string: tempUri) {
+      sourceURL = parsedURL
+    } else {
+      sourceURL = URL(fileURLWithPath: tempUri)
+    }
+
+    guard
+      let imageData = try? Data(contentsOf: sourceURL),
+      let containerURL = FileManager.default
+        .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
+    else {
+      reject("ERROR", "Could not read wallpaper image", nil)
+      return
+    }
+
+    let destURL = containerURL.appendingPathComponent("wallcal_wallpaper.jpg")
+    do {
+      try imageData.write(to: destURL)
+      UserDefaults(suiteName: appGroupID)?.set(eventId, forKey: "wallcal_wallpaper_event_id")
+      WidgetCenter.shared.reloadAllTimelines()
+      resolve("saved")
+    } catch {
+      reject("ERROR", error.localizedDescription, nil)
+    }
+  }
 }

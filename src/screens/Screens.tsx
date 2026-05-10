@@ -1,7 +1,9 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ImageBackground, ViewStyle,
+  Alert, NativeModules, Platform,
 } from 'react-native';
+import ViewShot, {captureRef} from 'react-native-view-shot';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRoute, useNavigation} from '@react-navigation/native';
 import {useStore} from '../store';
@@ -9,6 +11,13 @@ import {useShallow} from 'zustand/react/shallow';
 import {Colors} from '../utils/theme';
 import {getDaysUntil, formatEventDate, getCategoryColor, getCategoryIcon} from '../utils/helpers';
 import {WALLPAPER_THEMES, STORE_LIST, NOTIFY_OPTIONS} from '../data/constants';
+
+type WallpaperWidgetBridgeModule = {
+  saveWallpaperImage: (tempUri: string, eventId: string) => Promise<string>;
+};
+
+const wallpaperWidgetBridge: WallpaperWidgetBridgeModule | null =
+  Platform.OS === 'ios' ? NativeModules.WallCalWidgetBridge ?? null : null;
 
 function WallpaperShell({
   imageUri,
@@ -43,6 +52,7 @@ export function PreviewScreen() {
   const events = useStore(s => s.events);
   const [selectedId, setSelectedId] = useState(events[0]?.id ?? null);
   const selectedEvent = events.find(e => e.id === selectedId) ?? events[0];
+  const wallpaperRef = useRef<ViewShot>(null);
 
   if (!selectedEvent) {
     return (
@@ -60,6 +70,25 @@ export function PreviewScreen() {
   const catIcon = getCategoryIcon(selectedEvent.category);
   const theme = WALLPAPER_THEMES.find(t => t.id === selectedEvent.theme) ?? WALLPAPER_THEMES[0];
   const days = getDaysUntil(selectedEvent);
+
+  const saveToWidget = async () => {
+    try {
+      if (!wallpaperWidgetBridge) {
+        Alert.alert('Unavailable', 'This feature is currently available on iOS only.');
+        return;
+      }
+
+      const uri = await captureRef(wallpaperRef, {format: 'jpg', quality: 0.9});
+      await wallpaperWidgetBridge.saveWallpaperImage(uri, selectedEvent.id);
+      Alert.alert(
+        'Saved to Widget',
+        'Your wallpaper is now set as the widget background. Long-press your home screen to see it.',
+        [{text: 'Great!'}],
+      );
+    } catch {
+      Alert.alert('Error', 'Could not save wallpaper to widget.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -87,31 +116,41 @@ export function PreviewScreen() {
         </View>
 
         {/* Wallpaper preview */}
-        <WallpaperShell imageUri={selectedEvent.userImageUri} backgroundColor={theme.bg}>
-          <View style={[styles.wallAccent, {backgroundColor: catColor}]} />
-          <View style={styles.wallIconCircle}>
-            <Text style={{fontSize: 44}}>{catIcon}</Text>
-          </View>
-          <View style={[styles.wallCatPill, {backgroundColor: catColor + '33'}]}>
-            <Text style={[styles.wallCatText, {color: catColor}]}>{selectedEvent.category.toUpperCase()}</Text>
-          </View>
-          <Text style={[styles.wallTitle, {color: theme.fg}]}>{selectedEvent.title}</Text>
-          {!!selectedEvent.person && (
-            <Text style={[styles.wallPerson, {color: theme.fg + 'aa'}]}>{selectedEvent.person}</Text>
-          )}
-          <Text style={[styles.wallDate, {color: catColor}]}>{formatEventDate(selectedEvent)}</Text>
-          {days !== null && (
-            <Text style={[styles.wallDays, {color: theme.fg + '88'}]}>
-              {days === 0 ? 'Today!' : `${days} days away`}
-            </Text>
-          )}
-          <Text style={styles.wallWatermark}>WallCal • Smart Reminder Wallpaper</Text>
-        </WallpaperShell>
+        <ViewShot ref={wallpaperRef} options={{format: 'jpg', quality: 0.9}}>
+          <WallpaperShell imageUri={selectedEvent.userImageUri} backgroundColor={theme.bg}>
+            <View style={[styles.wallAccent, {backgroundColor: catColor}]} />
+            <View style={styles.wallIconCircle}>
+              <Text style={{fontSize: 44}}>{catIcon}</Text>
+            </View>
+            <View style={[styles.wallCatPill, {backgroundColor: catColor + '33'}]}>
+              <Text style={[styles.wallCatText, {color: catColor}]}>{selectedEvent.category.toUpperCase()}</Text>
+            </View>
+            <Text style={[styles.wallTitle, {color: theme.fg}]}>{selectedEvent.title}</Text>
+            {!!selectedEvent.person && (
+              <Text style={[styles.wallPerson, {color: theme.fg + 'aa'}]}>{selectedEvent.person}</Text>
+            )}
+            <Text style={[styles.wallDate, {color: catColor}]}>{formatEventDate(selectedEvent)}</Text>
+            {days !== null && (
+              <Text style={[styles.wallDays, {color: theme.fg + '88'}]}>
+                {days === 0 ? 'Today!' : `${days} days away`}
+              </Text>
+            )}
+            <Text style={styles.wallWatermark}>WallCal • Smart Reminder Wallpaper</Text>
+          </WallpaperShell>
+        </ViewShot>
+
+        <TouchableOpacity style={styles.saveWidgetBtn} onPress={saveToWidget}>
+          <Text style={styles.saveWidgetBtnText}>📲 Set as Widget Wallpaper</Text>
+        </TouchableOpacity>
 
         {/* How it works */}
         <View style={styles.card}>
           <Text style={[styles.cardLabel, {marginBottom: 8, color: Colors.textPrimary}]}>📲 How it works</Text>
-          {['1. Screenshot or save this wallpaper preview', '2. Set as lock screen or home screen background', '3. WallCal auto-updates before each event'].map(t => (
+          {[
+            '1. Pick an event and preview the wallpaper card',
+            '2. Tap "Set as Widget Wallpaper" to save it to the shared widget container',
+            '3. Add or refresh the medium home screen widget to see the new background',
+          ].map(t => (
             <Text key={t} style={styles.howTo}>{t}</Text>
           ))}
         </View>
@@ -124,72 +163,58 @@ export function WidgetScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header banner */}
         <View style={styles.purpleBanner}>
           <View style={styles.purpleBannerRow}>
             <View style={styles.purpleBannerIcon}><Text style={{fontSize: 18}}>📱</Text></View>
             <View>
-              <Text style={styles.purpleBannerTitle}>WidgetKit Guide</Text>
-              <Text style={styles.purpleBannerSub}>iOS Lock Screen Widgets — Swift Code</Text>
+              <Text style={styles.purpleBannerTitle}>WallCal Widgets</Text>
+              <Text style={styles.purpleBannerSub}>See your next reminder right from your home screen.</Text>
             </View>
           </View>
-          <View style={styles.badgeRow}>
-            {[['iOS 16+', '#34D399'], ['WidgetKit', Colors.purple], ['Swift 5.9+', '#F97316'], ['Xcode 15+', Colors.blue]].map(([l, c]) => (
-              <View key={l} style={[styles.badge, {backgroundColor: c + '22', borderColor: c + '44'}]}>
-                <Text style={[styles.badgeText, {color: c}]}>{l}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.howTo}>Choose an event, save its wallpaper, then add the medium widget to your home screen.</Text>
         </View>
 
-        {/* Widget families */}
         <View style={styles.card}>
-          <Text style={[styles.cardLabel, {marginBottom: 10}]}>4 WIDGET FAMILIES</Text>
+          <Text style={styles.sectionTitle}>Set up your widget</Text>
           {[
-            ['.accessoryRectangular', 'Most space · shows icon + title + date'],
-            ['.accessoryCircular', 'Compact · days countdown ring'],
-            ['.accessoryInline', 'Top of lock screen · one-liner'],
-            ['.accessoryCorner', 'Bottom corners · gauge style'],
-          ].map(([id, desc]) => (
-            <View key={id} style={styles.widgetFamilyRow}>
+            ['1', 'Open any event and tap Preview.'],
+            ['2', 'Tap "Set as Widget Wallpaper" to save that design.'],
+            ['3', 'Long-press your home screen and tap Edit or the + button.'],
+            ['4', 'Search for WallCal and choose the medium widget.'],
+            ['5', 'If needed, refresh the widget after saving a new wallpaper.'],
+          ].map(([step, desc]) => (
+            <View key={step} style={styles.widgetFamilyRow}>
               <View style={styles.dot} />
-              <View>
-                <Text style={styles.widgetFamilyId}>{id}</Text>
+              <View style={{flex: 1}}>
+                <Text style={styles.widgetFamilyId}>Step {step}</Text>
                 <Text style={styles.widgetFamilyDesc}>{desc}</Text>
               </View>
             </View>
           ))}
         </View>
 
-        {/* Swift files */}
         <View style={styles.card}>
-          <Text style={[styles.cardLabel, {marginBottom: 10}]}>⚙️ SWIFT FILES — WHAT EACH DOES</Text>
+          <Text style={styles.sectionTitle}>What shows in the widget</Text>
           {[
-            ['TimelineEntry', 'Defines the data snapshot shown in the widget at any moment — next event, urgent event, count.'],
-            ['TimelineProvider', 'Fetches events from App Group storage and tells WidgetKit when to refresh (midnight daily).'],
-            ['RectangularView', 'The wide lock screen widget — shows category icon, title, person, and days remaining.'],
-            ['CircularView', 'The round widget — countdown ring with days number and category emoji in the center.'],
-            ['InlineView', 'The single-line widget at the very top of the lock screen — "🎂 Wife\'s Birthday in 2d".'],
-            ['WidgetBundle', 'Registers all three widget types with iOS so they appear in the widget picker.'],
-            ['App Group / Data', 'Shared UserDefaults between the main app and widget. Call saveEvents() after every change.'],
+            ['Your wallpaper photo', 'The widget uses the image you last saved from Preview.'],
+            ['Next reminder details', 'It shows the event title, person, date, and countdown.'],
+            ['Automatic updates', 'When you save a new preview, the widget refreshes to match it.'],
           ].map(([title, desc]) => (
             <View
               key={title}
               style={{paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#ede9e6'}}>
-              <Text style={{fontWeight: '700', fontSize: 13, color: '#1a1612', fontFamily: 'Courier'}}>{title}</Text>
+              <Text style={{fontWeight: '700', fontSize: 13, color: '#1a1612'}}>{title}</Text>
               <Text style={{fontSize: 12, color: '#6b6560', marginTop: 3, lineHeight: 18}}>{desc}</Text>
             </View>
           ))}
         </View>
 
-        {/* Steps */}
         <View style={styles.card}>
-          <Text style={[styles.cardLabel, {marginBottom: 12}]}>🛠 INTEGRATION STEPS</Text>
+          <Text style={styles.sectionTitle}>Tips</Text>
           {[
-            ['1', 'Create Widget Extension in Xcode', 'File → New → Target → Widget Extension. Name it WallCalWidget.', Colors.purple],
-            ['2', 'Enable App Groups on both targets', 'Main app + Widget Extension both need the same App Group ID.', Colors.blue],
-            ['3', 'Add WallCalDataStore to main app', 'Call saveEvents() on every event change to sync to widget.', '#4ECDC4'],
-            ['4', 'Test on a real device', 'Long-press lock screen → Customize → Add Widgets → WallCal.', '#34D399'],
+            ['1', 'Use the medium widget size', 'That size is the best fit for the wallpaper-style preview.', Colors.purple],
+            ['2', 'Save again anytime', 'You can change the widget background just by saving a different event preview.', Colors.blue],
+            ['3', 'Keep important events updated', 'Edits to your events will affect the next widget refresh.', '#4ECDC4'],
           ].map(([step, title, detail, color]) => (
             <View key={step} style={styles.integrationStep}>
               <View style={[styles.stepCircle, {backgroundColor: color + '22', borderColor: color + '55'}]}>
@@ -319,6 +344,7 @@ export function EventPreviewScreen() {
   const nav = useNavigation();
   const events = useStore(s => s.events);
   const event = events.find(e => e.id === route.params?.eventId);
+  const wallpaperRef = useRef<ViewShot>(null);
 
   if (!event) {
     return (
@@ -339,32 +365,60 @@ export function EventPreviewScreen() {
   const theme = WALLPAPER_THEMES.find(t => t.id === event.theme) ?? WALLPAPER_THEMES[0];
   const days = getDaysUntil(event);
 
+  const saveToWidget = async () => {
+    try {
+      if (!wallpaperWidgetBridge) {
+        Alert.alert('Unavailable', 'This feature is currently available on iOS only.');
+        return;
+      }
+
+      const uri = await captureRef(wallpaperRef, {format: 'jpg', quality: 0.9});
+      await wallpaperWidgetBridge.saveWallpaperImage(uri, event.id);
+      Alert.alert(
+        'Saved to Widget',
+        'Your wallpaper is now set as the widget background. Long-press your home screen to see it.',
+        [{text: 'Great!'}],
+      );
+    } catch {
+      Alert.alert('Error', 'Could not save wallpaper to widget.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={[styles.scrollContent, {alignItems: 'center'}]}>
-        <WallpaperShell imageUri={event.userImageUri} backgroundColor={theme.bg} fullWidth>
-          <View style={[styles.wallAccent, {backgroundColor: catColor}]} />
-          <View style={styles.wallIconCircle}>
-            <Text style={{fontSize: 52}}>{catIcon}</Text>
-          </View>
-          <View style={[styles.wallCatPill, {backgroundColor: catColor + '33'}]}>
-            <Text style={[styles.wallCatText, {color: catColor}]}>{event.category.toUpperCase()}</Text>
-          </View>
-          <Text style={[styles.wallTitle, {color: theme.fg}]}>{event.title}</Text>
-          {!!event.person && (
-            <Text style={[styles.wallPerson, {color: theme.fg + 'aa'}]}>{event.person}</Text>
-          )}
-          <Text style={[styles.wallDate, {color: catColor}]}>{formatEventDate(event)}</Text>
-          {days !== null && (
-            <Text style={[styles.wallDays, {color: theme.fg + '88'}]}>
-              {days === 0 ? 'Today!' : days < 0 ? 'Passed' : `${days} days away`}
-            </Text>
-          )}
-          <Text style={styles.wallWatermark}>WallCal • Smart Reminder Wallpaper</Text>
-        </WallpaperShell>
+        <ViewShot ref={wallpaperRef} options={{format: 'jpg', quality: 0.9}} style={{width: '100%'}}>
+          <WallpaperShell imageUri={event.userImageUri} backgroundColor={theme.bg} fullWidth>
+            <View style={[styles.wallAccent, {backgroundColor: catColor}]} />
+            <View style={styles.wallIconCircle}>
+              <Text style={{fontSize: 52}}>{catIcon}</Text>
+            </View>
+            <View style={[styles.wallCatPill, {backgroundColor: catColor + '33'}]}>
+              <Text style={[styles.wallCatText, {color: catColor}]}>{event.category.toUpperCase()}</Text>
+            </View>
+            <Text style={[styles.wallTitle, {color: theme.fg}]}>{event.title}</Text>
+            {!!event.person && (
+              <Text style={[styles.wallPerson, {color: theme.fg + 'aa'}]}>{event.person}</Text>
+            )}
+            <Text style={[styles.wallDate, {color: catColor}]}>{formatEventDate(event)}</Text>
+            {days !== null && (
+              <Text style={[styles.wallDays, {color: theme.fg + '88'}]}>
+                {days === 0 ? 'Today!' : days < 0 ? 'Passed' : `${days} days away`}
+              </Text>
+            )}
+            <Text style={styles.wallWatermark}>WallCal • Smart Reminder Wallpaper</Text>
+          </WallpaperShell>
+        </ViewShot>
+        <TouchableOpacity style={[styles.saveWidgetBtn, {width: '100%'}]} onPress={saveToWidget}>
+          <Text style={styles.saveWidgetBtnText}>📲 Set as Widget Wallpaper</Text>
+        </TouchableOpacity>
         <View style={[styles.card, {width: '100%', marginTop: 16}]}>
           <Text style={styles.cardLabel}>HOW TO USE THIS WALLPAPER</Text>
-          {['1. Screenshot this preview', '2. Go to Settings → Wallpaper', '3. Set as lock screen background'].map(t => (
+          {[
+            '1. Preview the wallpaper card for this event',
+            '2. Tap "Set as Widget Wallpaper" to save it to the shared widget container',
+            '3. Add or refresh the medium home screen widget to see the new background',
+          ].map(t => (
             <Text key={t} style={styles.howTo}>{t}</Text>
           ))}
         </View>
@@ -419,6 +473,11 @@ const styles = StyleSheet.create({
   wallDate: {fontSize: 18, fontWeight: '700'},
   wallDays: {fontSize: 13},
   wallWatermark: {color: 'rgba(255,255,255,0.2)', fontSize: 10, marginTop: 8},
+  saveWidgetBtn: {
+    backgroundColor: Colors.purple, borderRadius: 14,
+    paddingVertical: 14, alignItems: 'center' as const,
+  },
+  saveWidgetBtnText: {color: '#fff', fontWeight: '800' as const, fontSize: 15},
   howTo: {fontSize: 13, color: Colors.textSecondary, lineHeight: 22},
 
   // Widget screen
