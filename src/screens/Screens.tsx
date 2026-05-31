@@ -17,7 +17,7 @@ type WallpaperWidgetBridgeModule = {
 };
 
 const wallpaperWidgetBridge: WallpaperWidgetBridgeModule | null =
-  Platform.OS === 'ios' ? NativeModules.WallCalWidgetBridge ?? null : null;
+  Platform.OS === 'ios' ? NativeModules.RememberWidgetBridge ?? null : null;
 
 function WallpaperShell({
   imageUri,
@@ -52,7 +52,7 @@ export function PreviewScreen() {
   const events = useStore(s => s.events);
   const [selectedId, setSelectedId] = useState(events[0]?.id ?? null);
   const selectedEvent = events.find(e => e.id === selectedId) ?? events[0];
-  const wallpaperRef = useRef<ViewShot>(null);
+  const wallpaperRef = useRef<React.ElementRef<typeof ViewShot>>(null);
 
   if (!selectedEvent) {
     return (
@@ -135,7 +135,7 @@ export function PreviewScreen() {
                 {days === 0 ? 'Today!' : `${days} days away`}
               </Text>
             )}
-            <Text style={styles.wallWatermark}>WallCal • Smart Reminder Wallpaper</Text>
+            <Text style={styles.wallWatermark}>Remember • Smart Reminder Wallpaper</Text>
           </WallpaperShell>
         </ViewShot>
 
@@ -167,7 +167,7 @@ export function WidgetScreen() {
           <View style={styles.purpleBannerRow}>
             <View style={styles.purpleBannerIcon}><Text style={{fontSize: 18}}>📱</Text></View>
             <View>
-              <Text style={styles.purpleBannerTitle}>WallCal Widgets</Text>
+              <Text style={styles.purpleBannerTitle}>Remember Widgets</Text>
               <Text style={styles.purpleBannerSub}>See your next reminder right from your home screen.</Text>
             </View>
           </View>
@@ -180,7 +180,7 @@ export function WidgetScreen() {
             ['1', 'Open any event and tap Preview.'],
             ['2', 'Tap "Set as Widget Wallpaper" to save that design.'],
             ['3', 'Long-press your home screen and tap Edit or the + button.'],
-            ['4', 'Search for WallCal and choose the medium widget.'],
+            ['4', 'Search for Remember and choose the medium widget.'],
             ['5', 'If needed, refresh the widget after saving a new wallpaper.'],
           ].map(([step, desc]) => (
             <View key={step} style={styles.widgetFamilyRow}>
@@ -344,7 +344,7 @@ export function EventPreviewScreen() {
   const nav = useNavigation();
   const events = useStore(s => s.events);
   const event = events.find(e => e.id === route.params?.eventId);
-  const wallpaperRef = useRef<ViewShot>(null);
+  const wallpaperRef = useRef<React.ElementRef<typeof ViewShot>>(null);
 
   if (!event) {
     return (
@@ -406,7 +406,7 @@ export function EventPreviewScreen() {
                 {days === 0 ? 'Today!' : days < 0 ? 'Passed' : `${days} days away`}
               </Text>
             )}
-            <Text style={styles.wallWatermark}>WallCal • Smart Reminder Wallpaper</Text>
+            <Text style={styles.wallWatermark}>Remember • Smart Reminder Wallpaper</Text>
           </WallpaperShell>
         </ViewShot>
         <TouchableOpacity style={[styles.saveWidgetBtn, {width: '100%'}]} onPress={saveToWidget}>

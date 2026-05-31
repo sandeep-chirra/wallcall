@@ -1,6 +1,6 @@
 #import <React/RCTBridgeModule.h>
 
-@interface RCT_EXTERN_MODULE(WallCalWidgetBridge, NSObject)
+@interface RCT_EXTERN_MODULE(RememberWidgetBridge, NSObject)
 
 RCT_EXTERN_METHOD(saveEvents:(NSString *)payload
                   resolver:(RCTPromiseResolveBlock)resolve

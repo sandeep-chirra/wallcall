@@ -15,7 +15,7 @@ import {CATEGORIES, WALLPAPER_THEMES, NOTIFY_OPTIONS} from '../data/constants';
 import {CategoryId, ThemeId, OverlayPos} from '../data/types';
 
 // ── Permissions Banner ────────────────────────────────────────────────────────
-const PERMS_STORAGE_KEY = 'wallcal_perms_granted';
+const PERMS_STORAGE_KEY = 'remember_perms_granted';
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('en-US', {

@@ -4,7 +4,7 @@ import {
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {Colors, Spacing, Radii} from '../utils/theme';
+import {Colors} from '../utils/theme';
 import {useStore} from '../store';
 
 export default function LoginScreen() {
@@ -36,7 +36,7 @@ export default function LoginScreen() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      login({name: `${provider} User`, email: `demo@wallcal.app`});
+      login({name: `${provider} User`, email: `demo@remember.app`});
     }, 600);
   };
 
@@ -52,7 +52,7 @@ export default function LoginScreen() {
             <View style={styles.logoIcon}>
               <Text style={{fontSize: 36}}>📱</Text>
             </View>
-            <Text style={styles.logoText}>WallCal</Text>
+            <Text style={styles.logoText}>Remember</Text>
             <Text style={styles.logoSub}>Smart Reminder Wallpapers</Text>
           </View>
 

@@ -2,10 +2,10 @@ import Foundation
 import React
 import WidgetKit
 
-@objc(WallCalWidgetBridge)
-class WallCalWidgetBridge: NSObject {
-  private let appGroupID = "group.org.reactjs.native.example.WallCalNative.shared"
-  private let eventsKey = "wallcal_widget_events"
+@objc(RememberWidgetBridge)
+class RememberWidgetBridge: NSObject {
+  private let appGroupID = "group.com.yourname.remember"
+  private let eventsKey = "remember_events"
 
   @objc
   static func requiresMainQueueSetup() -> Bool {
@@ -61,10 +61,10 @@ class WallCalWidgetBridge: NSObject {
       return
     }
 
-    let destURL = containerURL.appendingPathComponent("wallcal_wallpaper.jpg")
+    let destURL = containerURL.appendingPathComponent("remember_wallpaper.jpg")
     do {
       try imageData.write(to: destURL)
-      UserDefaults(suiteName: appGroupID)?.set(eventId, forKey: "wallcal_wallpaper_event_id")
+      UserDefaults(suiteName: appGroupID)?.set(eventId, forKey: "remember_wallpaper_event_id")
       WidgetCenter.shared.reloadAllTimelines()
       resolve("saved")
     } catch {

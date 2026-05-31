@@ -71,7 +71,7 @@ export const useStore = create<WallCalStore>()(
       setAutoWallpaper: (val) => set({autoWallpaper: val}),
     }),
     {
-      name: 'wallcal-storage',
+      name: 'remember-storage',
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
         if (state?.events) {

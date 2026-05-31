@@ -1,10 +1,10 @@
 import SwiftUI
 import WidgetKit
 
-private let wallCalAppGroupID = "group.org.reactjs.native.example.WallCalNative.shared"
-private let wallCalEventsKey = "wallcal_widget_events"
+private let rememberAppGroupID = "group.com.yourname.remember"
+private let rememberEventsKey = "remember_events"
 
-struct WallCalWidgetEvent: Codable, Identifiable {
+struct RememberWidgetEvent: Codable, Identifiable {
   let id: String
   let title: String
   let person: String
@@ -17,24 +17,24 @@ struct WallCalWidgetEvent: Codable, Identifiable {
   let returnDeadline: Bool?
 }
 
-struct WallCalWidgetPayload: Codable {
+struct RememberWidgetPayload: Codable {
   let syncedAt: String
-  let events: [WallCalWidgetEvent]
+  let events: [RememberWidgetEvent]
 }
 
-struct WallCalEntry: TimelineEntry {
+struct RememberEntry: TimelineEntry {
   let date: Date
-  let event: WallCalWidgetEvent?
+  let event: RememberWidgetEvent?
   let daysRemaining: Int?
   let nextOccurrence: Date?
   let upcomingCount: Int
 }
 
-struct WallCalProvider: TimelineProvider {
-  func placeholder(in context: Context) -> WallCalEntry {
-    WallCalEntry(
+struct RememberProvider: TimelineProvider {
+  func placeholder(in context: Context) -> RememberEntry {
+    RememberEntry(
       date: Date(),
-      event: WallCalWidgetEvent(
+      event: RememberWidgetEvent(
         id: "placeholder",
         title: "Doctor appointment",
         person: "Sarah",
@@ -52,11 +52,11 @@ struct WallCalProvider: TimelineProvider {
     )
   }
 
-  func getSnapshot(in context: Context, completion: @escaping (WallCalEntry) -> Void) {
+  func getSnapshot(in context: Context, completion: @escaping (RememberEntry) -> Void) {
     completion(makeEntries().first ?? makeEmptyEntry())
   }
 
-  func getTimeline(in context: Context, completion: @escaping (Timeline<WallCalEntry>) -> Void) {
+  func getTimeline(in context: Context, completion: @escaping (Timeline<RememberEntry>) -> Void) {
     let entries = makeEntries()
     let midnight = Calendar.current.nextDate(
       after: Date(),
@@ -66,13 +66,13 @@ struct WallCalProvider: TimelineProvider {
     completion(Timeline(entries: entries, policy: .after(midnight)))
   }
 
-  private func makeEmptyEntry() -> WallCalEntry {
-    WallCalEntry(date: Date(), event: nil, daysRemaining: nil, nextOccurrence: nil, upcomingCount: 0)
+  private func makeEmptyEntry() -> RememberEntry {
+    RememberEntry(date: Date(), event: nil, daysRemaining: nil, nextOccurrence: nil, upcomingCount: 0)
   }
 
-  private func makeEntries() -> [WallCalEntry] {
+  private func makeEntries() -> [RememberEntry] {
     let events = loadEvents()
-    let datedEvents = events.compactMap { event -> (WallCalWidgetEvent, Int, Date)? in
+    let datedEvents = events.compactMap { event -> (RememberWidgetEvent, Int, Date)? in
       guard let (days, date) = computeNextOccurrence(event: event) else { return nil }
       return (event, days, date)
     }.sorted { lhs, rhs in
@@ -88,7 +88,7 @@ struct WallCalProvider: TimelineProvider {
 
     return datedEvents.prefix(5).enumerated().map { index, triple in
       let entryDate = Calendar.current.date(byAdding: .minute, value: index * 30, to: now) ?? now
-      return WallCalEntry(
+      return RememberEntry(
         date: entryDate,
         event: triple.0,
         daysRemaining: triple.1,
@@ -98,19 +98,19 @@ struct WallCalProvider: TimelineProvider {
     }
   }
 
-  private func loadEvents() -> [WallCalWidgetEvent] {
+  private func loadEvents() -> [RememberWidgetEvent] {
     guard
-      let defaults = UserDefaults(suiteName: wallCalAppGroupID),
-      let payload = defaults.string(forKey: wallCalEventsKey),
+      let defaults = UserDefaults(suiteName: rememberAppGroupID),
+      let payload = defaults.string(forKey: rememberEventsKey),
       let data = payload.data(using: .utf8),
-      let decoded = try? JSONDecoder().decode(WallCalWidgetPayload.self, from: data)
+      let decoded = try? JSONDecoder().decode(RememberWidgetPayload.self, from: data)
     else {
       return []
     }
     return decoded.events
   }
 
-  private func computeNextOccurrence(event: WallCalWidgetEvent) -> (Int, Date)? {
+  private func computeNextOccurrence(event: RememberWidgetEvent) -> (Int, Date)? {
     let formatter = DateFormatter()
     formatter.calendar = Calendar(identifier: .gregorian)
     formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -148,8 +148,8 @@ struct WallCalProvider: TimelineProvider {
 
 // MARK: - Lock Screen Views
 
-struct WallCalRectangularView: View {
-  let entry: WallCalEntry
+struct RememberRectangularView: View {
+  let entry: RememberEntry
 
   var body: some View {
     if let event = entry.event {
@@ -182,8 +182,8 @@ struct WallCalRectangularView: View {
   }
 }
 
-struct WallCalCircularView: View {
-  let entry: WallCalEntry
+struct RememberCircularView: View {
+  let entry: RememberEntry
 
   var body: some View {
     ZStack {
@@ -199,8 +199,8 @@ struct WallCalCircularView: View {
   }
 }
 
-struct WallCalInlineView: View {
-  let entry: WallCalEntry
+struct RememberInlineView: View {
+  let entry: RememberEntry
 
   var body: some View {
     if let event = entry.event {
@@ -218,8 +218,8 @@ struct WallCalInlineView: View {
 
 // MARK: - Home Screen Medium View
 
-struct WallCalMediumView: View {
-  let entry: WallCalEntry
+struct RememberMediumView: View {
+  let entry: RememberEntry
 
   var body: some View {
     if let event = entry.event {
@@ -334,8 +334,8 @@ struct WallCalMediumView: View {
 
   private func loadWallpaperImage() -> UIImage? {
     guard let url = FileManager.default
-      .containerURL(forSecurityApplicationGroupIdentifier: wallCalAppGroupID)?
-      .appendingPathComponent("wallcal_wallpaper.jpg")
+      .containerURL(forSecurityApplicationGroupIdentifier: rememberAppGroupID)?
+      .appendingPathComponent("remember_wallpaper.jpg")
     else { return nil }
     return UIImage(contentsOfFile: url.path)
   }
@@ -343,7 +343,7 @@ struct WallCalMediumView: View {
 
 // MARK: - Helpers
 
-struct WallCalWidgetBackground: ViewModifier {
+struct RememberWidgetBackground: ViewModifier {
   func body(content: Content) -> some View {
     if #available(iOSApplicationExtension 17.0, *) {
       content.containerBackground(.fill.tertiary, for: .widget)
@@ -355,7 +355,7 @@ struct WallCalWidgetBackground: ViewModifier {
   }
 }
 
-struct WallCalMediumBackground: ViewModifier {
+struct RememberMediumBackground: ViewModifier {
   func body(content: Content) -> some View {
     if #available(iOSApplicationExtension 17.0, *) {
       content.containerBackground(.clear, for: .widget)
@@ -366,11 +366,11 @@ struct WallCalMediumBackground: ViewModifier {
 }
 
 extension View {
-  func wallCalWidgetBackground() -> some View {
-    modifier(WallCalWidgetBackground())
+  func rememberWidgetBackground() -> some View {
+    modifier(RememberWidgetBackground())
   }
-  func wallCalMediumBackground() -> some View {
-    modifier(WallCalMediumBackground())
+  func rememberMediumBackground() -> some View {
+    modifier(RememberMediumBackground())
   }
 }
 
@@ -400,67 +400,67 @@ private func categoryColor(for category: String) -> Color {
 
 // MARK: - Widget Configurations
 
-struct WallCalWidget: Widget {
-  let kind: String = "WallCalWidget"
+struct RememberWidget: Widget {
+  let kind: String = "RememberWidget"
 
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: kind, provider: WallCalProvider()) { entry in
-      WallCalRectangularView(entry: entry)
-        .wallCalWidgetBackground()
+    StaticConfiguration(kind: kind, provider: RememberProvider()) { entry in
+      RememberRectangularView(entry: entry)
+        .rememberWidgetBackground()
     }
-    .configurationDisplayName("WallCal Next Reminder")
+    .configurationDisplayName("Remember Next Reminder")
     .description("See your next important reminder at a glance.")
     .supportedFamilies([.accessoryRectangular])
   }
 }
 
-struct WallCalCircularWidget: Widget {
-  let kind: String = "WallCalCircularWidget"
+struct RememberCircularWidget: Widget {
+  let kind: String = "RememberCircularWidget"
 
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: kind, provider: WallCalProvider()) { entry in
-      WallCalCircularView(entry: entry)
-        .wallCalWidgetBackground()
+    StaticConfiguration(kind: kind, provider: RememberProvider()) { entry in
+      RememberCircularView(entry: entry)
+        .rememberWidgetBackground()
     }
-    .configurationDisplayName("WallCal Countdown")
+    .configurationDisplayName("Remember Countdown")
     .description("Compact countdown for your next reminder.")
     .supportedFamilies([.accessoryCircular])
   }
 }
 
-struct WallCalInlineWidget: Widget {
-  let kind: String = "WallCalInlineWidget"
+struct RememberInlineWidget: Widget {
+  let kind: String = "RememberInlineWidget"
 
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: kind, provider: WallCalProvider()) { entry in
-      WallCalInlineView(entry: entry)
+    StaticConfiguration(kind: kind, provider: RememberProvider()) { entry in
+      RememberInlineView(entry: entry)
     }
-    .configurationDisplayName("WallCal Inline")
+    .configurationDisplayName("Remember Inline")
     .description("Single-line next reminder summary.")
     .supportedFamilies([.accessoryInline])
   }
 }
 
-struct WallCalMediumWidget: Widget {
-  let kind: String = "WallCalMediumWidget"
+struct RememberMediumWidget: Widget {
+  let kind: String = "RememberMediumWidget"
 
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: kind, provider: WallCalProvider()) { entry in
-      WallCalMediumView(entry: entry)
-        .wallCalMediumBackground()
+    StaticConfiguration(kind: kind, provider: RememberProvider()) { entry in
+      RememberMediumView(entry: entry)
+        .rememberMediumBackground()
     }
-    .configurationDisplayName("WallCal Event")
+    .configurationDisplayName("Remember Event")
     .description("See your next reminder in full detail.")
     .supportedFamilies([.systemMedium])
   }
 }
 
 @main
-struct WallCalWidgetBundle: WidgetBundle {
+struct RememberWidgetBundle: WidgetBundle {
   var body: some Widget {
-    WallCalWidget()
-    WallCalCircularWidget()
-    WallCalInlineWidget()
-    WallCalMediumWidget()
+    RememberWidget()
+    RememberCircularWidget()
+    RememberInlineWidget()
+    RememberMediumWidget()
   }
 }

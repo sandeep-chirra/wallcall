@@ -14,6 +14,21 @@ import {WallCalEvent} from '../data/types';
 
 type Nav = NativeStackNavigationProp<any>;
 
+const distantFuture = 99999;
+
+function compareUpcomingFirst(a: WallCalEvent, b: WallCalEvent) {
+  const daysA = getDaysUntil(a);
+  const daysB = getDaysUntil(b);
+  const aUpcoming = daysA !== null && daysA >= 0;
+  const bUpcoming = daysB !== null && daysB >= 0;
+
+  if (aUpcoming !== bUpcoming) {
+    return aUpcoming ? -1 : 1;
+  }
+
+  return (daysA ?? distantFuture) - (daysB ?? distantFuture);
+}
+
 function EventCard({event, onPreview, onEdit, onDelete}: {
   event: WallCalEvent;
   onPreview: () => void;
@@ -28,13 +43,11 @@ function EventCard({event, onPreview, onEdit, onDelete}: {
   const tone = store?.color ?? catColor;
 
   return (
-    <View style={[styles.card, isUrgent && {borderColor: tone + '55'}]}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onPreview}
+      style={[styles.card, isUrgent && {borderColor: tone + '55'}]}>
       <View style={[styles.cardGlow, {backgroundColor: tone + '14'}]} />
-      {isUrgent && (
-        <View style={[styles.urgentBadge, {backgroundColor: tone}]}>
-          <Text style={styles.urgentText}>{days === 0 ? 'Today' : `${days}d • urgent`}</Text>
-        </View>
-      )}
       <View style={styles.cardRow}>
         <View style={[styles.iconBox, {backgroundColor: tone + '15', borderColor: tone + '20'}]}>
           <Text style={[styles.iconText, store && {color: store.color, fontWeight: '900', fontSize: 13}]}>
@@ -44,7 +57,7 @@ function EventCard({event, onPreview, onEdit, onDelete}: {
         <View style={styles.cardBody}>
           <View style={styles.cardTopLine}>
             <Text style={styles.cardTitle} numberOfLines={1}>{event.title}</Text>
-            <View style={[styles.typeBadge, {backgroundColor: tone + '12'}]}>
+            <View style={[styles.typeBadge, {backgroundColor: tone + '12', borderColor: tone + '22'}]}>
               <Text style={[styles.typeBadgeText, {color: tone}]}>
                 {store ? 'Return' : event.category}
               </Text>
@@ -71,6 +84,11 @@ function EventCard({event, onPreview, onEdit, onDelete}: {
           <Text style={styles.previewActionText}>Preview</Text>
         </TouchableOpacity>
         <View style={styles.secondaryActions}>
+          {isUrgent && (
+            <View style={[styles.urgentPill, {backgroundColor: tone}]}>
+              <Text style={styles.urgentText}>{days === 0 ? 'Today' : `${days}d urgent`}</Text>
+            </View>
+          )}
           <TouchableOpacity onPress={onEdit} style={styles.secondaryActionBtn}>
             <Text style={styles.secondaryActionText}>Edit</Text>
           </TouchableOpacity>
@@ -79,7 +97,7 @@ function EventCard({event, onPreview, onEdit, onDelete}: {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -92,7 +110,7 @@ export default function HomeScreen() {
   })));
 
   const upcomingEvents = useMemo(
-    () => [...events].sort((a, b) => (getDaysUntil(a) ?? 999) - (getDaysUntil(b) ?? 999)),
+    () => [...events].sort(compareUpcomingFirst),
     [events],
   );
 
@@ -106,6 +124,7 @@ export default function HomeScreen() {
     return d !== null && d <= 7;
   }).length;
   const nextEvent = upcomingEvents[0];
+  const firstUrgentEvent = upcomingEvents.find(e => (getDaysUntil(e) ?? distantFuture) <= (e.notifyDays ?? 1));
 
   const confirmDelete = (id: string) => {
     Alert.alert('Delete Event', 'Are you sure?', [
@@ -127,7 +146,7 @@ export default function HomeScreen() {
                 <View style={styles.logoBox}><Text style={{fontSize: 18}}>📱</Text></View>
                 <View style={{flex: 1}}>
                   <Text style={styles.headerEyebrow}>Smart reminder wallpapers</Text>
-                  <Text style={styles.headerTitle}>WallCal</Text>
+                  <Text style={styles.headerTitle}>Remember</Text>
                 </View>
               </View>
             </View>
@@ -148,28 +167,40 @@ export default function HomeScreen() {
           <Text style={styles.headerSub}>Hey {user?.name ?? 'there'} • Keep life dates elegant, visible, and impossible to miss.</Text>
 
           <View style={styles.statRow}>
-            <View style={styles.statChip}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => nextEvent && nav.navigate('EventPreview', {eventId: nextEvent.id})}
+              style={styles.statChip}>
               <Text style={styles.statValue}>{events.length}</Text>
               <Text style={styles.statLabel}>Active</Text>
-            </View>
-            <View style={styles.statChip}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => firstUrgentEvent && nav.navigate('EventPreview', {eventId: firstUrgentEvent.id})}
+              style={styles.statChip}>
               <Text style={styles.statValue}>{urgentCount}</Text>
               <Text style={styles.statLabel}>Urgent</Text>
-            </View>
-            <View style={styles.statChip}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => nav.navigate('Returns')}
+              style={styles.statChip}>
               <Text style={styles.statValue}>{returnEvents.length}</Text>
               <Text style={styles.statLabel}>Returns</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {!!nextEvent && (
-            <View style={styles.nextEventCard}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => nav.navigate('EventPreview', {eventId: nextEvent.id})}
+              style={styles.nextEventCard}>
               <Text style={styles.nextEventLabel}>Next up</Text>
               <Text style={styles.nextEventTitle} numberOfLines={1}>{nextEvent.title}</Text>
               <Text style={styles.nextEventMeta}>
                 {formatEventDate(nextEvent)} • {Math.max(getDaysUntil(nextEvent) ?? 0, 0)}d remaining
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -177,7 +208,10 @@ export default function HomeScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Reminders banner */}
         {urgentCount > 0 && (
-          <View style={styles.bannerPurple}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => firstUrgentEvent && nav.navigate('EventPreview', {eventId: firstUrgentEvent.id})}
+            style={styles.bannerPurple}>
             <View style={styles.bannerIconShell}>
               <Text style={{fontSize: 18}}>🔔</Text>
             </View>
@@ -186,7 +220,7 @@ export default function HomeScreen() {
               <Text style={styles.bannerSub}>{urgentCount} event(s) need your attention</Text>
             </View>
             <Text style={styles.bannerArrow}>→</Text>
-          </View>
+          </TouchableOpacity>
         )}
 
         {/* Returns banner */}
@@ -235,13 +269,13 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.headerBg,
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 12,
+    paddingTop: 6,
+    paddingBottom: 8,
   },
   heroCard: {
     backgroundColor: '#1b1421',
-    borderRadius: 28,
-    padding: 18,
+    borderRadius: 24,
+    padding: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#2d2337',
@@ -273,52 +307,52 @@ const styles = StyleSheet.create({
   headerCopy: {flex: 1, minWidth: 0},
   headerRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
   logoBox: {
-    width: 42, height: 42, borderRadius: 14, backgroundColor: '#7c3aed',
+    width: 34, height: 34, borderRadius: 12, backgroundColor: '#7c3aed',
     alignItems: 'center', justifyContent: 'center',
   },
   headerEyebrow: {
     color: '#c9c0d3',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  headerTitle: {fontSize: 28, fontWeight: '800', letterSpacing: -0.8, color: '#fff', marginTop: 2},
-  headerSub: {color: '#d7d1df', fontSize: 14, lineHeight: 20, marginTop: 14, maxWidth: '92%'},
+  headerTitle: {fontSize: 24, fontWeight: '800', letterSpacing: -0.5, color: '#fff', marginTop: 0},
+  headerSub: {color: '#d7d1df', fontSize: 13, lineHeight: 18, marginTop: 10, maxWidth: '94%'},
   headerBtns: {gap: 8, flexShrink: 0},
   headerBtnGhost: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: '#ffffff12',
     borderWidth: 1,
     borderColor: '#ffffff14',
   },
-  headerBtnGhostText: {color: '#f6f1ff', fontWeight: '700', fontSize: 13},
+  headerBtnGhostText: {color: '#f6f1ff', fontWeight: '700', fontSize: 12},
   headerBtnPrimary: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: '#8b5cf6',
   },
-  headerBtnPrimaryText: {color: '#fff', fontWeight: '800', fontSize: 13},
-  statRow: {flexDirection: 'row', gap: 10, marginTop: 16},
+  headerBtnPrimaryText: {color: '#fff', fontWeight: '800', fontSize: 12},
+  statRow: {flexDirection: 'row', gap: 8, marginTop: 12},
   statChip: {
     flex: 1,
     backgroundColor: '#ffffff10',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: '#ffffff12',
   },
-  statValue: {color: '#fff', fontSize: 18, fontWeight: '800'},
-  statLabel: {color: '#b9b0c5', fontSize: 11, marginTop: 2},
+  statValue: {color: '#fff', fontSize: 16, fontWeight: '800'},
+  statLabel: {color: '#b9b0c5', fontSize: 11, marginTop: 1},
   nextEventCard: {
-    marginTop: 14,
+    marginTop: 12,
     backgroundColor: '#f6efe7',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 16,
+    padding: 12,
   },
   nextEventLabel: {
     color: '#7a6c61',
@@ -327,7 +361,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  nextEventTitle: {color: '#1a1612', fontSize: 18, fontWeight: '800', marginTop: 3},
+  nextEventTitle: {color: '#1a1612', fontSize: 16, fontWeight: '800', marginTop: 2},
   nextEventMeta: {color: '#6b6560', fontSize: 12, marginTop: 3},
   scroll: {flex: 1},
   scrollContent: {paddingHorizontal: 16, paddingTop: 14, gap: 12, paddingBottom: 40},
@@ -377,13 +411,11 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 999,
   },
-  urgentBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
+  urgentPill: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 7,
     borderRadius: 999,
+    justifyContent: 'center',
   },
   urgentText: {color: '#fff', fontSize: 10, fontWeight: '800'},
   cardRow: {flexDirection: 'row', alignItems: 'center', gap: 14},
@@ -393,10 +425,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   iconText: {fontSize: 22},
-  cardBody: {flex: 1, gap: 4, paddingRight: 6},
+  cardBody: {flex: 1, gap: 4, minWidth: 0},
   cardTopLine: {flexDirection: 'row', alignItems: 'center', gap: 8},
   cardTitle: {flex: 1, fontSize: 16, fontWeight: '800', color: Colors.textPrimary},
-  typeBadge: {paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999},
+  typeBadge: {
+    maxWidth: 88,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
   typeBadgeText: {fontSize: 10, fontWeight: '800', textTransform: 'uppercase'},
   cardSub: {fontSize: 13, color: Colors.textSecondary},
   cardMetaRow: {flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap'},
@@ -410,7 +448,7 @@ const styles = StyleSheet.create({
   },
   daysBadgeText: {fontSize: 11, fontWeight: '700', color: '#6f665e'},
   cardHint: {fontSize: 11, color: Colors.textMuted},
-  cardActions: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14},
+  cardActions: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 10},
   previewAction: {
     backgroundColor: '#121826',
     paddingHorizontal: 14,
@@ -418,7 +456,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   previewActionText: {fontSize: 12, fontWeight: '800', color: '#fff'},
-  secondaryActions: {flexDirection: 'row', gap: 8},
+  secondaryActions: {flexDirection: 'row', gap: 8, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end'},
   secondaryActionBtn: {
     paddingHorizontal: 12,
     paddingVertical: 10,

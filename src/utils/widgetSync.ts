@@ -7,7 +7,7 @@ type WidgetBridgeModule = {
 };
 
 const widgetBridge: WidgetBridgeModule | null =
-  Platform.OS === 'ios' ? NativeModules.WallCalWidgetBridge ?? null : null;
+  Platform.OS === 'ios' ? NativeModules.RememberWidgetBridge ?? null : null;
 
 function serializeEvents(events: WallCalEvent[]) {
   return JSON.stringify({
